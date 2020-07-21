@@ -11,6 +11,7 @@
 """Word embeddings computation class."""
 
 import sys
+import time
 
 import numpy as np
 import tensorflow as tf
@@ -35,7 +36,7 @@ class WEmbeddings:
     def __init__(self):
         self._models = {}
         for model_name, (transformers_model, layer_start, layer_end) in self.MODELS_MAP.items():
-            tokenizer = transformers.AutoTokenizer.from_pretrained(transformers_model, use_fast=True)
+            tokenizer = transformers.AutoTokenizer.from_pretrained(transformers_model)
 
             transformers_model = transformers.TFAutoModel.from_pretrained(
                 transformers_model,
@@ -66,18 +67,38 @@ class WEmbeddings:
             model name: one of the keys of self._MODELS_MAP.
             sentences: 2D Python array with sentences with tokens (strings).
         Returns:
-            pickled embeddings
+            embeddings as a Python list of 1D Numpy arrays
         """
 
         model = self._models[model]
 
-        batch = model.tokenizer.batch_encode_plus(sentences, return_tensors="tf", is_pretokenized=True)
+        start = time.time()
+
+        subwords, segments = [], []
+        for sentence in sentences:
+            segments.append([])
+            subwords.append([])
+            for i, word in enumerate(sentence):
+                word_subwords = model.tokenizer.encode(word, add_special_tokens=False)
+                segments[-1].extend([i] * len(word_subwords))
+                subwords[-1].extend(word_subwords)
+            subwords[-1] = model.tokenizer.build_inputs_with_special_tokens(subwords[-1])
 
         max_sentence_len = max(len(sentence) for sentence in sentences)
-        segments = np.full([batch.data["input_ids"].shape[0], batch.data["input_ids"].shape[1] - 1], max_sentence_len, dtype=np.int32)
-        for i, sentence in enumerate(sentences):
-            for j in range(len(sentence)):
-                start, end = batch.word_to_tokens(i, j)
-                segments[i, start - 1:end - 1] = j
+        max_subwords = max(len(sentence) for sentence in subwords)
 
-        return model.compute_embeddings(batch.data["input_ids"], tf.convert_to_tensor(segments))
+        print("Max sentence len", max_sentence_len, "max subwords", max_subwords, "batch subwords", len(sentences) * max_subwords, "in", time.time() - start, file=sys.stderr)
+
+        np_subwords = np.zeros([len(subwords), max_subwords], np.int32)
+        for i, subwords in enumerate(subwords):
+            np_subwords[i, :len(subwords)] = subwords
+
+        np_segments = np.full([len(subwords), max_subwords - 1], max_sentence_len, np.int32)
+        for i, segments in enumerate(segments):
+            np_segments[i, :len(segments)] = segments
+
+        start = time.time()
+        embeddings = model.compute_embeddings(tf.convert_to_tensor(np_subwords), tf.convert_to_tensor(np_segments)).numpy()
+        print("BERT in", time.time() - start, file=sys.stderr)
+
+        return [embeddings[i, :len(sentences[i])] for i in range(len(sentences))]
