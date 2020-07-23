@@ -21,12 +21,17 @@ It prints out results to standard output.
 Commandline arguments:
 ----------------------
     
-    --host: Either host:port pair or empty for local processing. Default:
-            empty.
-    --infile: Either path to file or empty for reading from stdio. Default:
-              empty.
+    --host: Either host:port pair or None for local processing. Default:
+            None
+    --infile: Either path to file or None for reading from stdio. Default:
+              None
     --model: Model name (see wembeddings.py for options). Default:
              "bert-base-multilignual-uncased-last4"
+
+Example usage:
+--------------
+
+$ ./wembeddings_client.py --infile=examples/client_input.conll
 
 Input format:
 -------------
@@ -34,15 +39,17 @@ Input format:
 The expected format is vertical, CoNLL-like segmented and tokenized tokens. One
 token per line, sentences delimited with newline.
 
-Input example:
+Input example (see also examples/client_input.conll):
 
 John
 loves
-Mary.
+Mary
+.
 
 Mary
 loves
-John.
+John
+.
 """
 
 
@@ -54,20 +61,39 @@ if __name__ == "__main__":
 
     # Parse arguments
     parser = argparse.ArgumentParser()
-    parser.add_argument("--host", default="", type=str, help="host:port or empty to process locally")
-    parser.add_argument("--infile", default=sys.stdin, type=argparse.FileType("r"), help="path to file or empty for stdio")
+    parser.add_argument("--host", default=None, type=str, help="host:port or None to process locally")
+    parser.add_argument("--infile", default=sys.stdin, type=argparse.FileType("r"), help="path to file or None for stdio")
     parser.add_argument("--model", default="bert-base-multilingual-uncased-last4", type=str, help="Model name (see wembeddings.py for options)")
     args = parser.parse_args()
 
+    # Read sentences
+    sentences = []
+    sentence = []
     for line in args.infile:
-        line = line.rstrip()
-        print(line)
-
-        if args.host:
-            # TODO process by server requests
-            pass
+        word = line.rstrip()
+        if word:
+            sentence.append(word)
         else:
-            # TODO process locally
-            pass
-
+            sentences.append(sentence)
+            sentence = []
+    if sentence:
+        sentences.append(sentence)
     args.infile.close()
+
+    # Compute word embeddings
+    if args.host:
+        # TODO process by server requests
+        pass
+    else:
+        print("Computing word embeddings locally.", file=sys.stderr, flush=True)
+
+        import wembeddings
+       
+        wembeddings = wembeddings.WEmbeddings()
+        outputs = wembeddings.compute_embeddings(args.model, sentences)
+
+    # Print outputs
+    for sentence_outputs in outputs:
+        for word_output in sentence_outputs:
+            print(word_output)
+        print()
