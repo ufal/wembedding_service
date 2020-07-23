@@ -34,13 +34,18 @@ class WEmbeddingsRequestHandler(http.server.BaseHTTPRequestHandler):
         length = int(request.headers.get("content-length", -1))
         data = json.loads(request.rfile.read(length))
         
-        request.send_response(200)
-        request.send_header("Content-type", "application/octet-stream")
-        request.end_headers()
+        try:
+            output = request.server.wembeddings.compute_embeddings(data["model"], data["sentences"])
 
-        output = request.server.wembeddings.compute_embeddings(data["model"], data["sentences"])
+            request.send_response(200)
+            request.send_header("Content-type", "application/octet-stream")
+            request.end_headers()
 
-        pickle.dump(output, request.wfile, protocol=3)
+            pickle.dump(output, request.wfile, protocol=3)
+        except:
+            request.send_response(400)
+            request.end_headers()
+            raise
 
 
 class WEmbeddingsServer(socketserver.TCPServer):
