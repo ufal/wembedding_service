@@ -82,8 +82,22 @@ if __name__ == "__main__":
 
     # Compute word embeddings
     if args.host:
-        # TODO process by server requests
-        pass
+        print("Sending requests to {}".format(args.host), file=sys.stderr, flush=True)
+
+        import json
+        import pickle
+        import requests
+
+        response = requests.post(args.host,
+                                 json.JSONEncoder().encode({"model": args.model,
+                                                            "sentences": sentences}))
+        if response.ok:
+            print("Successfully processed request, time elapsed: {}".format(response.elapsed), file=sys.stderr, flush=True)
+            outputs = pickle.loads(response.content)
+        else:
+            print("A server error occured: Response status code = {}".format(response.status_code), file=sys.stderr, flush=True)
+            sys.exit(1)
+
     else:
         print("Computing word embeddings locally.", file=sys.stderr, flush=True)
 
@@ -93,7 +107,7 @@ if __name__ == "__main__":
         outputs = wembeddings.compute_embeddings(args.model, sentences)
 
     # Print outputs
-    for sentence_outputs in outputs:
-        for word_output in sentence_outputs:
+    for sentence_output in outputs:
+        for word_output in sentence_output:
             print(word_output)
         print()
