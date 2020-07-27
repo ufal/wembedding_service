@@ -27,6 +27,8 @@ Commandline arguments:
               None
     --model: Model name (see wembeddings.py for options). Default:
              "bert-base-multilignual-uncased-last4"
+    --batch_size: Batch size (maximum number of sentences per batch).
+                  Default: 64.
 
 Example usage:
 --------------
@@ -64,21 +66,42 @@ if __name__ == "__main__":
     parser.add_argument("--host", default=None, type=str, help="host:port or None to process locally")
     parser.add_argument("--infile", default=sys.stdin, type=argparse.FileType("r"), help="path to file or None for stdio")
     parser.add_argument("--model", default="bert-base-multilingual-uncased-last4", type=str, help="Model name (see wembeddings.py for options)")
+    parser.add_argument("--batch_size", default=64, type=int, help="Batch size (maximum number of sentences per batch)")
     args = parser.parse_args()
 
     # Read sentences
-    sentences = []
-    sentence = []
+    sentences = []  # batches x sentences x words
+    batch = []      # current batch: sentences x words
+    sentence = []   # current sentence
+    nsentences = 0
     for line in args.infile:
         word = line.rstrip()
         if word:
             sentence.append(word)
         else:
-            sentences.append(sentence)
+            if len(batch) == args.batch_size:
+                sentences.append(batch)
+                batch = []
+            batch.append(sentence)
+            nsentences += 1
             sentence = []
+
+    # Leftover sentence (file not properly ended with empty line)
     if sentence:
-        sentences.append(sentence)
+        if len(batch) == args.batch_size:
+            sentences.append(batch)
+            batch = []
+        batch.append(sentence)
+        nsentences += 1
+
+    # Leftover batch
+    if batch:
+        sentences.append(batch)
+
+    # Close infile
     args.infile.close()
+
+    print("Read {} sentences in {} batches.".format(nsentences, len(sentences)), file=sys.stderr, flush=True)
 
     # Compute word embeddings
     if args.host:
@@ -88,23 +111,31 @@ if __name__ == "__main__":
         import pickle
         import requests
 
-        response = requests.post(args.host,
-                                 json.JSONEncoder().encode({"model": args.model,
-                                                            "sentences": sentences}))
-        if response.ok:
-            print("Successfully processed request, time elapsed: {}".format(response.elapsed), file=sys.stderr, flush=True)
-            outputs = pickle.loads(response.content)
-        else:
-            print("A server error occured: Response status code = {}".format(response.status_code), file=sys.stderr, flush=True)
-            sys.exit(1)
+        # Process batches by sending requests to server
+        outputs = []
+        for i, batch in enumerate(sentences):
+            print("Computing batch {} of {}.".format(i+1, len(sentences)), file=sys.stderr, flush=True)
+            response = requests.post(args.host,
+                                     json.JSONEncoder().encode({"model": args.model,
+                                                                "sentences": batch}))
+            if response.ok:
+                print("Successfully processed request, time elapsed: {}".format(response.elapsed), file=sys.stderr, flush=True)
+                outputs.extend(pickle.loads(response.content))
+            else:
+                print("A server error occured: Response status code = {}".format(response.status_code), file=sys.stderr, flush=True)
+                sys.exit(1)
 
     else:
         print("Computing word embeddings locally.", file=sys.stderr, flush=True)
 
         import wembeddings
-       
+
+        # Process batches locally
         wembeddings = wembeddings.WEmbeddings()
-        outputs = wembeddings.compute_embeddings(args.model, sentences)
+        outputs = []
+        for i, batch in enumerate(sentences):
+            print("Computing batch {} of {}.".format(i+1, len(sentences)), file=sys.stderr, flush=True)
+            outputs.extend(wembeddings.compute_embeddings(args.model, batch))
 
     # Print outputs
     for sentence_output in outputs:
