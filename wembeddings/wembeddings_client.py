@@ -67,5 +67,5 @@ class WEmbeddingsClient:
                     batch = []
                 batch.append(sentence)
             if batch:
-                outputs.extend(model.compute_embeddings(model, batch))
+                outputs.extend(wembeddings.compute_embeddings(model, batch))
             return outputs
