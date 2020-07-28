@@ -8,14 +8,7 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-"""Word embeddings server.
-
-Example setup:
-$ venv/bin/python ./wembeddings_server.py
-
-Example call:
-$ curl --data-binary @examples/request.json localhost:8000/ | xxd
-"""
+"""Word embeddings server class."""
 
 import http.server
 import json
@@ -23,7 +16,7 @@ import pickle
 import socketserver
 import sys
 
-import wembeddings
+from . import wembeddings
 
 
 PORT = 8000
@@ -55,14 +48,3 @@ class WEmbeddingsServer(socketserver.TCPServer):
         super().__init__(("", port), WEmbeddingsRequestHandler)
 
         self.wembeddings = wembeddings.WEmbeddings()
-
-       
-if __name__ == "__main__":
-
-    with WEmbeddingsServer(PORT) as server:
-        print("Serving WEmbeddings at port {}".format(PORT), file=sys.stderr, flush=True)
-        try:
-            server.serve_forever()
-        except KeyboardInterrupt:
-            pass
-        server.server_close()

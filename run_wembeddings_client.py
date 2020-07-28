@@ -11,9 +11,7 @@
 """Word embeddings client.
 
 WEmbeddings client computes word embeddings either locally or by sending
-requests to a running WEmbeddings server (see wembeddings_server.py).
-
-The client can be used as a script or imported as a module.
+requests to a running WEmbeddings server.
 
 The script accepts either an input file or reads data from standard input. It
 prints out results to standard output.
@@ -59,56 +57,7 @@ import pickle
 import requests
 import sys
 
-
-class WEmbeddingsClient:
-    def __init__(self, host, batch_size):
-        self._host = host
-        self._batch_size = batch_size
-
-
-    def _make_post_request(self, model, sentences):
-        response = requests.post(self._host,
-                                 json.JSONEncoder().encode({"model": model,
-                                                           "sentences": sentences}))
-        if response.ok:
-            print("Successfully processed request, time elapsed: {}".format(response.elapsed), file=sys.stderr, flush=True)
-            return pickle.loads(response.content)
-        else:
-            print("A server error occured: Response status code = {}".format(response.status_code), file=sys.stderr, flush=True)
-            sys.exit(1)
-        
-
-    def compute_embeddings(self, model, sentences):
-        if self._host:
-            print("Sending requests to {}".format(self._host), file=sys.stderr, flush=True)
-
-            outputs = []
-            batch = []
-            for sentence in sentences:
-                if len(batch) == self._batch_size:
-                    outputs.extend(self._make_post_request(model, batch))
-                    batch = []
-                batch.append(sentence)
-            if batch:
-                outputs.extend(self._make_post_request(model, batch))
-            return outputs
-
-        else:
-            print("Computing word embeddings locally.", file=sys.stderr, flush=True)
-
-            import wembeddings
-
-            wembeddings = wembeddings.WEmbeddings()
-            outputs = []
-            batch = []
-            for sentence in sentences:
-                if len(batch) == self._batch_size:
-                    outputs.extend(wembeddings.compute_embeddings(model, batch))
-                    batch = []
-                batch.append(sentence)
-            if batch:
-                outputs.extend(wembeddings.compute_embeddings(model, batch))
-            return outputs
+from wembeddings import wembeddings_client
 
 
 if __name__ == "__main__":
@@ -138,7 +87,7 @@ if __name__ == "__main__":
     print("Read {} sentences.".format(len(sentences)), file=sys.stderr, flush=True)
 
     # Compute word embeddings
-    client = WEmbeddingsClient(args.host, args.batch_size)
+    client = wembeddings_client.WEmbeddingsClient(args.host, args.batch_size)
     outputs = client.compute_embeddings(args.model, sentences)
 
     # Print outputs
