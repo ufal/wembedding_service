@@ -93,12 +93,12 @@ class WEmbeddings:
         print("Max sentence len", max_sentence_len, "max subwords", max_subwords, "batch subwords", len(sentences) * max_subwords, "in", time.time() - start, file=sys.stderr)
 
         np_subwords = np.zeros([len(subwords), max_subwords], np.int32)
-        for i, subwords in enumerate(subwords):
-            np_subwords[i, :len(subwords)] = subwords
+        for i, subword in enumerate(subwords):
+            np_subwords[i, :len(subword)] = subword
 
-        np_segments = np.full([len(subwords), max_subwords - 1], max_sentence_len, np.int32)
-        for i, segments in enumerate(segments):
-            np_segments[i, :len(segments)] = segments
+        np_segments = np.full([len(segments), max_subwords - 1], max_sentence_len, np.int32)
+        for i, segment in enumerate(segments):
+            np_segments[i, :len(segment)] = segment
 
         start = time.time()
         embeddings = model.compute_embeddings(tf.convert_to_tensor(np_subwords), tf.convert_to_tensor(np_segments)).numpy()
