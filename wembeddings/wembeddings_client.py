@@ -58,12 +58,12 @@ class WEmbeddingsClient:
 
             from . import wembeddings
 
-            model = wembeddings.WEmbeddings()
+            wembeddings = wembeddings.WEmbeddings()
             outputs = []
             batch = []
             for sentence in sentences:
                 if len(batch) == self._batch_size:
-                    outputs.extend(model.compute_embeddings(model, batch))
+                    outputs.extend(wembeddings.compute_embeddings(model, batch))
                     batch = []
                 batch.append(sentence)
             if batch:
