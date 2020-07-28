@@ -70,6 +70,9 @@ class WEmbeddings:
             embeddings as a Python list of 1D Numpy arrays
         """
 
+        if model not in self._models:
+            print("No such WEmbeddings model {}".format(model), file=sys.stderr, flush=True)
+
         model = self._models[model]
 
         start = time.time()
