@@ -34,8 +34,7 @@ class WEmbeddingsClient:
             print("Successfully processed request, time elapsed: {}".format(response.elapsed), file=sys.stderr, flush=True)
             return pickle.loads(response.content)
         else:
-            print("A server error occured: Response status code = {}".format(response.status_code), file=sys.stderr, flush=True)
-            sys.exit(1)
+            raise RuntimeError("A WEmbeddings server error occured: Response status code = {}".format(response.status_code))
         
 
     def compute_embeddings(self, model, sentences):
