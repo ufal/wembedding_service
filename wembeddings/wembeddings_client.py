@@ -37,6 +37,7 @@ class WEmbeddingsClient:
             raise RuntimeError("A WEmbeddings server error occured: Response status code = {}".format(response.status_code))
         
 
+    # TODO: Batches should be arranged by the caller.
     def compute_embeddings(self, model, sentences):
         if self._host:
             print("Sending requests to {}".format(self._host), file=sys.stderr, flush=True)

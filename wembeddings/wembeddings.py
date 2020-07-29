@@ -77,6 +77,8 @@ class WEmbeddings:
 
         start = time.time()
 
+        # TODO: If there are too many subwords, sentence must be splitted and
+        # processed separately.
         subwords, segments = [], []
         for sentence in sentences:
             segments.append([])
