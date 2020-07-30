@@ -26,6 +26,8 @@ class WEmbeddings:
         "bert-base-multilingual-uncased-last4": ("bert-base-multilingual-uncased", -4, None),
     }
 
+    MAX_SUBWORDS_PER_SENTENCE = 510
+
     class _Model:
         """Keeps constructed tokenizer and transformers model graph."""
         def __init__(self, tokenizer, transformers_model, compute_embeddings):
@@ -77,16 +79,22 @@ class WEmbeddings:
 
         start = time.time()
 
-        # TODO: If there are too many subwords, sentence must be splitted and
-        # processed separately.
-        subwords, segments = [], []
-        for sentence in sentences:
+        subwords, segments, parts = [], [], []
+        for i, sentence in enumerate(sentences):
             segments.append([])
             subwords.append([])
-            for i, word in enumerate(sentence):
+            parts.append([0])
+            for word in sentence:
                 word_subwords = model.tokenizer.encode(word, add_special_tokens=False)
-                segments[-1].extend([i] * len(word_subwords))
+                # Split sentences with too many subwords
+                if len(subwords[-1]) + len(word_subwords) > self.MAX_SUBWORDS_PER_SENTENCE:
+                    subwords[-1] = model.tokenizer.build_inputs_with_special_tokens(subwords[-1])
+                    segments.append([])
+                    subwords.append([])
+                    parts[-1].append(0)
+                segments[-1].extend([parts[-1][-1]] * len(word_subwords))
                 subwords[-1].extend(word_subwords)
+                parts[-1][-1] += 1
             subwords[-1] = model.tokenizer.build_inputs_with_special_tokens(subwords[-1])
 
         max_sentence_len = max(len(sentence) for sentence in sentences)
@@ -103,7 +111,16 @@ class WEmbeddings:
             np_segments[i, :len(segment)] = segment
 
         start = time.time()
-        embeddings = model.compute_embeddings(tf.convert_to_tensor(np_subwords), tf.convert_to_tensor(np_segments)).numpy()
+        embeddings_with_parts = model.compute_embeddings(tf.convert_to_tensor(np_subwords), tf.convert_to_tensor(np_segments)).numpy()
         print("BERT in", time.time() - start, file=sys.stderr)
 
-        return [embeddings[i, :len(sentences[i])] for i in range(len(sentences))]
+        # Concatenate splitted sentences
+        embeddings = []
+        current_sentence_part = 0
+        for sentence_parts in parts:
+            embeddings.append(np.concatenate(
+                [embeddings_with_parts[current_sentence_part + i, :sentence_part] for i, sentence_part in enumerate(sentence_parts)],
+                axis=0))
+            current_sentence_part += len(sentence_parts)
+
+        return embeddings
