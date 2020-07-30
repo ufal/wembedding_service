@@ -64,7 +64,7 @@ class WEmbeddings:
     def compute_embeddings(self, model, sentences):
         """Computes word embeddings.
         Arguments:
-            model name: one of the keys of self._MODELS_MAP.
+            model: one of the keys of self._MODELS_MAP.
             sentences: 2D Python array with sentences with tokens (strings).
         Returns:
             embeddings as a Python list of 1D Numpy arrays
