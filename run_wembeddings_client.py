@@ -72,26 +72,40 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     # Read sentences
-    sentences = []  
+    sentences = []  # batches x sentences x words
+    batch = []
     sentence = []  
+    nsentences = 0
     for line in args.infile:
         word = line.rstrip()
         if word:
             sentence.append(word)
         else:
-            sentences.append(sentence)
+            if len(batch) == args.batch_size:
+                sentences.append(batch)
+                batch = []
+            batch.append(sentence)
+            nsentences += 1
             sentence = []
-    if sentence:
-        sentences.append(sentence)
+    # Leftover batch or sentence
+    if batch or sentence:
+        if len(batch) == args.batch_size:
+            sentences.append(batch)
+            batch = []
+        if sentence:
+            batch.append(sentence)
+            nsentences += 1
+        if batch:
+            sentences.append(batch)
+
     args.infile.close()
-    print("Read {} sentences.".format(len(sentences)), file=sys.stderr, flush=True)
+    print("Read {} sentences in {} batches.".format(nsentences, len(sentences)), file=sys.stderr, flush=True)
 
     # Compute word embeddings
-    client = wembeddings_client.WEmbeddingsClient(args.host, args.batch_size)
-    outputs = client.compute_embeddings(args.model, sentences)
-
-    # Print outputs
-    for sentence_output in outputs:
-        for word_output in sentence_output:
-            print(word_output)
-        print()
+    client = wembeddings_client.WEmbeddingsClient(args.host)
+    for batch in sentences:
+        outputs = client.compute_embeddings(args.model, batch)
+        for sentence_output in outputs:
+            for word_output in sentence_output:
+                print(word_output)
+            print()

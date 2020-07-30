@@ -21,9 +21,8 @@ import sys
 
 
 class WEmbeddingsClient:
-    def __init__(self, host, batch_size):
+    def __init__(self, host):
         self._host = host
-        self._batch_size = batch_size
 
 
     def _make_post_request(self, model, sentences):
@@ -37,35 +36,10 @@ class WEmbeddingsClient:
             raise RuntimeError("A WEmbeddings server error occured: Response status code = {}".format(response.status_code))
         
 
-    # TODO: Batches should be arranged by the caller.
     def compute_embeddings(self, model, sentences):
         if self._host:
-            print("Sending requests to {}".format(self._host), file=sys.stderr, flush=True)
-
-            outputs = []
-            batch = []
-            for sentence in sentences:
-                if len(batch) == self._batch_size:
-                    outputs.extend(self._make_post_request(model, batch))
-                    batch = []
-                batch.append(sentence)
-            if batch:
-                outputs.extend(self._make_post_request(model, batch))
-            return outputs
-
+            return self._make_post_request(model, sentences)
         else:
-            print("Computing word embeddings locally.", file=sys.stderr, flush=True)
-
             from . import wembeddings
-
             wembeddings = wembeddings.WEmbeddings()
-            outputs = []
-            batch = []
-            for sentence in sentences:
-                if len(batch) == self._batch_size:
-                    outputs.extend(wembeddings.compute_embeddings(model, batch))
-                    batch = []
-                batch.append(sentence)
-            if batch:
-                outputs.extend(wembeddings.compute_embeddings(model, batch))
-            return outputs
+            return wembeddings.compute_embeddings(model, sentences)
