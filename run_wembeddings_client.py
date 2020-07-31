@@ -18,15 +18,15 @@ prints out results to standard output.
 
 Script commandline arguments:
 -----------------------------
-    
+ 
+    --batch_size: Batch size (maximum number of sentences per batch).
+                  Default: 64.
     --host: Either host:port pair or None for local processing. Default:
             None
     --infile: Either path to file or None for reading from stdio. Default:
               None
     --model: Model name (see wembeddings.py for options). Default:
              "bert-base-multilignual-uncased-last4"
-    --batch_size: Batch size (maximum number of sentences per batch).
-                  Default: 64.
 
 Example usage:
 --------------
@@ -65,10 +65,10 @@ if __name__ == "__main__":
 
     # Parse arguments
     parser = argparse.ArgumentParser()
+    parser.add_argument("--batch_size", default=64, type=int, help="Batch size (maximum number of sentences per batch)")
     parser.add_argument("--host", default=None, type=str, help="ip:port or None")
     parser.add_argument("--infile", default=sys.stdin, type=argparse.FileType("r"), help="path to file or None for stdio")
     parser.add_argument("--model", default="bert-base-multilingual-uncased-last4", type=str, help="Model name (see wembeddings.py for options)")
-    parser.add_argument("--batch_size", default=64, type=int, help="Batch size (maximum number of sentences per batch)")
     args = parser.parse_args()
 
     # Read sentences
