@@ -127,9 +127,9 @@ if __name__ == "__main__":
 
     # Compute word embeddings
     client = wembeddings_client.WEmbeddingsClient(args.host)
-    for i, batch in enumerate(sentences):
+    for batch in sentences:
         outputs = client.compute_embeddings(args.model, batch)
-        for sentence_output in outputs:
-            for j,word_output in enumerate(sentence_output):
+        for i, sentence_output in enumerate(outputs):
+            for j, word_output in enumerate(sentence_output):
                 print(batch[i][j]," ".join(str(round(e, 6)) for e in word_output))
             print()
