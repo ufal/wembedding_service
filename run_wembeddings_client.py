@@ -141,5 +141,5 @@ if __name__ == "__main__":
         outputs = client.compute_embeddings(args.model, batch)
         for sentence_output in outputs:
             for word_output in sentence_output:
-                print(word_output)
+                print(" ".join(str(round(e, 6)) for e in word_output))
             print()
