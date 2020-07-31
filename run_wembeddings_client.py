@@ -28,6 +28,7 @@ Script commandline arguments:
               None
     --model: Model name (see wembeddings.py for options). Default:
              "bert-base-multilignual-uncased-last4"
+    --threads: Number of threads. Default: 4
 
 Input format:
 -------------
@@ -81,6 +82,8 @@ import pickle
 import requests
 import sys
 
+import tensorflow as tf
+
 from wembeddings import wembeddings_client
 
 
@@ -94,7 +97,12 @@ if __name__ == "__main__":
     parser.add_argument("--host", default=None, type=str, help="ip:port or None")
     parser.add_argument("--infile", default=sys.stdin, type=argparse.FileType("r"), help="path to file or None for stdio")
     parser.add_argument("--model", default="bert-base-multilingual-uncased-last4", type=str, help="Model name (see wembeddings.py for options)")
+    parser.add_argument("--threads", default=4, type=int, help="Number of threads")
     args = parser.parse_args()
+
+    # Impose the limit on the number of threads
+    tf.config.threading.set_inter_op_parallelism_threads(args.threads)
+    tf.config.threading.set_intra_op_parallelism_threads(args.threads)
 
     # Read sentences
     sentences = []  # batches x sentences x words
