@@ -21,7 +21,6 @@ Script commandline arguments:
  
     --batch_size: Batch size (maximum number of sentences per batch).
                   Default: 64.
-    --delimiter: Column delimiter or None for signle column. Default: None.
     --host: Either host:port pair or None for local processing. Default:
             None
     --infile: Either path to file or None for reading from stdio. Default:
@@ -30,15 +29,18 @@ Script commandline arguments:
              "bert-base-multilignual-uncased-last4"
     --threads: Number of threads. Default: 4
 
+Example usage:
+--------------
+
+$ ./run_wembeddings_client.py --infile=examples/client_input_single_column.conll
+
 Input format:
 -------------
 
 The expected format is vertical, CoNLL-like segmented and tokenized tokens. One
-token per line, sentences delimited with newline.
-
-If delimiter is given, the file can have multiple columns, just like the CoNLL
-format. Tokens are expected in the first column and the other columns are
-simply ignored.
+token per line, sentences delimited with newline. The file can have multiple
+columns, separated by tabs just like the CoNLL format. Tokens are expected in
+the first column and the other columns are simply ignored.
 
 Single column input example (see examples/client_input_single_column.conll):
 
@@ -64,17 +66,6 @@ loves	love	VERB
 John	John	PROPN
 .	.	PROPN
 
-Example usage:
---------------
-
-Single column usage:
-
-$ ./run_wembeddings_client.py --infile=examples/client_input_single_column.conll
-
-Usage with delimiter:
-
-$ ./run_wembeddings_client.py --infile=examples/client_input_multiple_column.conll --delimiter="\t"
-
 """
 
 import json
@@ -93,7 +84,6 @@ if __name__ == "__main__":
     # Parse arguments
     parser = argparse.ArgumentParser()
     parser.add_argument("--batch_size", default=64, type=int, help="Batch size (maximum number of sentences per batch)")
-    parser.add_argument("--delimiter", default=None, type=str, help="Column delimiter or None for single column file")
     parser.add_argument("--host", default=None, type=str, help="ip:port or None")
     parser.add_argument("--infile", default=sys.stdin, type=argparse.FileType("r"), help="path to file or None for stdio")
     parser.add_argument("--model", default="bert-base-multilingual-uncased-last4", type=str, help="Model name (see wembeddings.py for options)")
@@ -112,7 +102,7 @@ if __name__ == "__main__":
     for line in args.infile:
         line = line.rstrip()
         if line:
-            word = line.split(args.delimiter)[0] if args.delimiter else line
+            word = line.split("\t")[0]
             sentence.append(word)
         else:
             if len(batch) == args.batch_size:
@@ -137,9 +127,9 @@ if __name__ == "__main__":
 
     # Compute word embeddings
     client = wembeddings_client.WEmbeddingsClient(args.host)
-    for batch in sentences:
+    for i, batch in enumerate(sentences):
         outputs = client.compute_embeddings(args.model, batch)
         for sentence_output in outputs:
-            for word_output in sentence_output:
-                print(" ".join(str(round(e, 6)) for e in word_output))
+            for j,word_output in enumerate(sentence_output):
+                print(batch[i][j]," ".join(str(round(e, 6)) for e in word_output))
             print()
