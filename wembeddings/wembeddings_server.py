@@ -40,6 +40,10 @@ class WEmbeddingsRequestHandler(http.server.BaseHTTPRequestHandler):
             request.end_headers()
             raise
 
+    def log_message(self, format, *args):
+        super().log_message(format, *args)
+        sys.stderr.flush()
+
 
 class WEmbeddingsServer(socketserver.TCPServer):
     allow_reuse_address = 1
