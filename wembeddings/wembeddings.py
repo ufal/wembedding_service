@@ -36,7 +36,12 @@ class WEmbeddings:
             self.transformers_model = transformers_model
             self.compute_embeddings = compute_embeddings
 
-    def __init__(self, models_map=MODELS_MAP, max_form_len=64):
+    def __init__(self, models_map=MODELS_MAP, max_form_len=64, threads=None):
+        # Impose the limit on the number of threads, if given
+        if threads is not None:
+            tf.config.threading.set_inter_op_parallelism_threads(threads)
+            tf.config.threading.set_intra_op_parallelism_threads(threads)
+
         self._max_form_len = max_form_len
 
         self._models = {}
