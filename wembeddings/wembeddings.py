@@ -24,6 +24,7 @@ class WEmbeddings:
     MODELS_MAP = {
         # Key: model name. Value: transformer model name, layer start, layer end.
         "bert-base-multilingual-uncased-last4": ("bert-base-multilingual-uncased", -4, None),
+        "xlm-roberta-base-last4": ("jplu/tf-xlm-roberta-base", -4, None),
     }
 
     MAX_SUBWORDS_PER_SENTENCE = 510
@@ -35,12 +36,12 @@ class WEmbeddings:
             self.transformers_model = transformers_model
             self.compute_embeddings = compute_embeddings
 
-    def __init__(self, max_form_len=64):
+    def __init__(self, models_map=MODELS_MAP, max_form_len=64):
         self._max_form_len = max_form_len
 
         self._models = {}
-        for model_name, (transformers_model, layer_start, layer_end) in self.MODELS_MAP.items():
-            tokenizer = transformers.AutoTokenizer.from_pretrained(transformers_model)
+        for model_name, (transformers_model, layer_start, layer_end) in models_map.items():
+            tokenizer = transformers.AutoTokenizer.from_pretrained(transformers_model, use_fast=True)
 
             transformers_model = transformers.TFAutoModel.from_pretrained(
                 transformers_model,
