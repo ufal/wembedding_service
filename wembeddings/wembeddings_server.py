@@ -12,43 +12,68 @@
 
 import http.server
 import json
-import pickle
 import socketserver
-import sys
+import threading
 
-from . import wembeddings
+import numpy as np
 
+class WEmbeddingsServer(socketserver.ThreadingTCPServer):
 
-PORT = 8000
+    class WEmbeddingsRequestHandler(http.server.BaseHTTPRequestHandler):
+        protocol_version = "HTTP/1.1"
 
+        def do_POST(request):
+            request.close_connection = True
+            request.send_header("Connection", "close")
 
-class WEmbeddingsRequestHandler(http.server.BaseHTTPRequestHandler):
-    def do_POST(request):
-        length = int(request.headers.get("content-length", -1))
-        data = json.loads(request.rfile.read(length))
-        
-        try:
-            output = request.server.wembeddings.compute_embeddings(data["model"], data["sentences"])
+            try:
+                length = int(request.headers.get("Content-length", -1))
+                data = json.loads(request.rfile.read(length))
+                with request.server._wembeddings_thread_mutex:
+                    request.server._wembeddings_thread_input = data
+                    request.server._wembeddings_thread_have_input.set()
+                    request.server._wembeddings_thread_have_output.wait()
+                    request.server._wembeddings_thread_have_output.clear()
+                    sentences_embeddings = request.server._wembeddings_thread_output
+            except:
+                request.send_response(400)
+                request.end_headers()
+                raise
 
             request.send_response(200)
             request.send_header("Content-type", "application/octet-stream")
             request.end_headers()
 
-            pickle.dump(output, request.wfile, protocol=3)
-        except:
-            request.send_response(400)
-            request.end_headers()
-            raise
+            for sentence_embedding in sentences_embeddings:
+                np.save(request.wfile, sentence_embedding.astype(np.float16), allow_pickle=False)
 
-    def log_message(self, format, *args):
-        super().log_message(format, *args)
-        sys.stderr.flush()
+    allow_reuse_address = True
+    daemon_threads = False
 
+    def __init__(self, port, wembeddings_lambda):
+        super().__init__(("", port), self.WEmbeddingsRequestHandler)
 
-class WEmbeddingsServer(socketserver.TCPServer):
-    allow_reuse_address = 1
+        self._wembeddings_thread_mutex = threading.Lock()
+        self._wembeddings_thread_have_input = threading.Event()
+        self._wembeddings_thread_have_output = threading.Event()
+        self._wembeddings_thread = threading.Thread(target=self._wembeddings_thread_code, args=(wembeddings_lambda,), daemon=True)
+        self._wembeddings_thread.start()
 
-    def __init__(self, port):
-        super().__init__(("", port), WEmbeddingsRequestHandler)
+        # Wait for the worker thread to start
+        self._wembeddings_thread_have_output.wait()
+        self._wembeddings_thread_have_output.clear()
 
-        self.wembeddings = wembeddings.WEmbeddings()
+    def _wembeddings_thread_code(self, wembeddings_lambda):
+        # Create the WEmbeddings object
+        self._wembeddings = wembeddings_lambda()
+
+        # Notify that the thread is ready
+        self._wembeddings_thread_have_output.set()
+
+        # Start the real work
+        while True:
+            self._wembeddings_thread_have_input.wait()
+            self._wembeddings_thread_have_input.clear()
+            self._wembeddings_thread_output = self._wembeddings.compute_embeddings(
+                self._wembeddings_thread_input["model"], self._wembeddings_thread_input["sentences"])
+            self._wembeddings_thread_have_output.set()

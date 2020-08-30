@@ -17,24 +17,39 @@ Example call:
 $ curl --data-binary @examples/request.json localhost:8000/ | xxd
 """
 
-import http.server
-import json
-import pickle
-import socketserver
+import signal
 import sys
+import threading
 
-from wembeddings import wembeddings_server
+import wembeddings.wembeddings as wembeddings
+import wembeddings.wembeddings_server as wembeddings_server
 
-
-PORT = 8000
-
-       
 if __name__ == "__main__":
+    import argparse
 
-    with wembeddings_server.WEmbeddingsServer(PORT) as server:
-        print("Serving WEmbeddings at port {}".format(PORT), file=sys.stderr, flush=True)
-        try:
-            server.serve_forever()
-        except KeyboardInterrupt:
-            pass
-        server.server_close()
+    # Parse arguments
+    parser = argparse.ArgumentParser()
+    parser.add_argument("port", type=int, help="Port to use")
+    parser.add_argument("--model", default="bert-base-multilingual-uncased-last4", type=str, help="Model name (see wembeddings.py for options)")
+    parser.add_argument("--threads", default=4, type=int, help="Threads to use")
+    args = parser.parse_args()
+
+    # Create the server and its own thread
+    server = wembeddings_server.WEmbeddingsServer(
+        args.port,
+        lambda: wembeddings.WEmbeddings(models_map={args.model: wembeddings.WEmbeddings.MODELS_MAP[args.model]},
+                                        threads=args.threads),
+    )
+    server_thread = threading.Thread(target=server.serve_forever, daemon=True)
+    server_thread.start()
+
+    print("Starting WEmbeddings server on port {}.".format(args.port), file=sys.stderr)
+    print("To stop it gracefully, either send SIGINT (Ctrl+C) or SIGUSR1.", file=sys.stderr, flush=True)
+
+    # Wait until the server should be closed
+    signal.sigwait([signal.SIGINT, signal.SIGUSR1])
+    print("Initiating shutdown of the WEmbeddings server.", file=sys.stderr, flush=True)
+    server.shutdown()
+    print("Stopped handling new requests, processing all current ones.", file=sys.stderr, flush=True)
+    server.server_close()
+    print("Finished shutdown of the WEmbeddings server.", file=sys.stderr, flush=True)
