@@ -52,7 +52,7 @@ class WEmbeddings:
                 _, _, subword_embeddings_layers = transformers_model((subwords, tf.cast(tf.not_equal(subwords, 0), tf.int32)))
                 subword_embeddings = tf.math.reduce_mean(subword_embeddings_layers[layer_start:layer_end], axis=0)
 
-                # Average subwords (word pieces) word embeddings for each token 
+                # Average subwords (word pieces) word embeddings for each token
                 def average_subwords(embeddings_and_segments):
                     subword_embeddings, segments = embeddings_and_segments
                     return tf.math.segment_mean(subword_embeddings, segments)
@@ -69,7 +69,7 @@ class WEmbeddings:
     def compute_embeddings(self, model, sentences):
         """Computes word embeddings.
         Arguments:
-            model: one of the keys of self._MODELS_MAP.
+            model: one of the keys of self.MODELS_MAP.
             sentences: 2D Python array with sentences with tokens (strings).
         Returns:
             embeddings as a Python list of 1D Numpy arrays
