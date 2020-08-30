@@ -35,7 +35,9 @@ class WEmbeddings:
             self.transformers_model = transformers_model
             self.compute_embeddings = compute_embeddings
 
-    def __init__(self):
+    def __init__(self, max_form_len=64):
+        self._max_form_len = max_form_len
+
         self._models = {}
         for model_name, (transformers_model, layer_start, layer_end) in self.MODELS_MAP.items():
             tokenizer = transformers.AutoTokenizer.from_pretrained(transformers_model)
@@ -85,7 +87,7 @@ class WEmbeddings:
             subwords.append([])
             parts.append([0])
             for word in sentence:
-                word_subwords = model.tokenizer.encode(word, add_special_tokens=False)
+                word_subwords = model.tokenizer.encode(word[:self._max_form_len], add_special_tokens=False)
                 # Split sentences with too many subwords
                 if len(subwords[-1]) + len(word_subwords) > self.MAX_SUBWORDS_PER_SENTENCE:
                     subwords[-1] = model.tokenizer.build_inputs_with_special_tokens(subwords[-1])
