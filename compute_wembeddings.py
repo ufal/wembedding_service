@@ -21,38 +21,43 @@ if __name__ == "__main__":
 
     # Parse arguments
     parser = argparse.ArgumentParser()
-    parser.add_argument("input_conllu", type=str, help="Input CoNLL-U file")
+    parser.add_argument("input_path", type=str, help="Input file")
     parser.add_argument("output_npz", type=str, help="Output NPZ file")
     parser.add_argument("--batch_size", default=64, type=int, help="Batch size")
     parser.add_argument("--dtype", default="float16", type=str, help="Dtype to save as")
+    parser.add_argument("--format", default="conllu", type=str, help="Input format (conllu, conll)")
     parser.add_argument("--model", default="bert-base-multilingual-uncased-last4", type=str, help="Model name (see wembeddings.py for options)")
     parser.add_argument("--threads", default=4, type=int, help="Threads to use")
     args = parser.parse_args()
 
     args.dtype = getattr(np, args.dtype)
+    assert args.format in ["conll", "conllu"]
 
     # Impose the limit on the number of threads
     tf.config.threading.set_inter_op_parallelism_threads(args.threads)
     tf.config.threading.set_intra_op_parallelism_threads(args.threads)
 
-    # Load CoNLL-U file
+    # Load the input file
     sentences = []
-    with open(args.input_conllu, mode="r", encoding="utf-8") as conllu_file:
+    with open(args.input_path, mode="r", encoding="utf-8") as input_file:
         in_sentence = False
-        for line in conllu_file:
+        for line in input_file:
             line = line.rstrip("\n")
             if line:
                 if not in_sentence:
                     sentences.append([])
                     in_sentence = True
-                if re.match(r"^[0-9]*\t", line):
-                    columns = line.split("\t")
-                    assert len(columns) == 10
-                    sentences[-1].append(columns[1])
+
+                columns = line.split("\t")
+                if args.format == "conll":
+                    sentences[-1].append(columns[0])
+                elif args.format == "conllu":
+                    if columns[0].isdigit():
+                        assert len(columns) == 10
+                        sentences[-1].append(columns[1])
             else:
                 in_sentence = False
-            if line.startswith("#"): continue
-    print("Loaded CoNLL-U file with {} sentences and {} words.".format(len(sentences), sum(map(len, sentences))), file=sys.stderr, flush=True)
+    print("Loaded {} sentences and {} words.".format(len(sentences), sum(map(len, sentences))), file=sys.stderr, flush=True)
 
     # Compute word embeddings
     wembeddings = wembeddings.WEmbeddings(models_map={args.model: wembeddings.WEmbeddings.MODELS_MAP[args.model]})
