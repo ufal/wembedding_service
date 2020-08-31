@@ -58,7 +58,6 @@ class WEmbeddings:
             )
 
             def compute_embeddings(subwords, segments):
-                subwords, segments = tf.convert_to_tensor(subwords), tf.convert_to_tensor(segments)
                 _, _, subword_embeddings_layers = transformers_model((subwords, tf.cast(tf.not_equal(subwords, 0), tf.int32)))
                 subword_embeddings = tf.math.reduce_mean(subword_embeddings_layers[layer_start:layer_end], axis=0)
 
