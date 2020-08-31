@@ -26,6 +26,7 @@ if __name__ == "__main__":
     parser.add_argument("--dtype", default="float16", type=str, help="Dtype to save as")
     parser.add_argument("--format", default="conllu", type=str, help="Input format (conllu, conll)")
     parser.add_argument("--model", default="bert-base-multilingual-uncased-last4", type=str, help="Model name (see wembeddings.py for options)")
+    parser.add_argument("--server", default=None, type=str, help="Use given server to compute the embeddings")
     parser.add_argument("--threads", default=4, type=int, help="Threads to use")
     args = parser.parse_args()
 
@@ -54,8 +55,13 @@ if __name__ == "__main__":
                 in_sentence = False
     print("Loaded {} sentences and {} words.".format(len(sentences), sum(map(len, sentences))), file=sys.stderr, flush=True)
 
+    # Initialize suitable computational class
+    if args.server is not None:
+        wembeddings = wembeddings.WEmbeddings.ClientNetwork(args.server)
+    else:
+        wembeddings = wembeddings.WEmbeddings(model=args.model, threads=args.threads)
+
     # Compute word embeddings
-    wembeddings = wembeddings.WEmbeddings(model=args.model, threads=args.threads)
     with zipfile.ZipFile(args.output_npz, mode="w", compression=zipfile.ZIP_STORED) as output_npz:
         for i in range(0, len(sentences), args.batch_size):
             sentences_embeddings = wembeddings.compute_embeddings(args.model, sentences[i:i + args.batch_size])
