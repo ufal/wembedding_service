@@ -142,18 +142,14 @@ class WEmbeddings:
         def __init__(self, url):
             self._url = url
         def compute_embeddings(self, model, sentences):
-            try:
-                with urllib.request.urlopen(
-                        "http://{}".format(self._url),
-                        data=json.dumps({"model": model, "sentences": sentences}, ensure_ascii=True).encode("ascii"),
-                ) as response:
-                    embeddings = []
-                    for _ in sentences:
-                        embeddings.append(np.lib.format.read_array(response, allow_pickle=False))
-                    return embeddings
-            except:
-                raise
-            return None
+            with urllib.request.urlopen(
+                    "http://{}".format(self._url),
+                    data=json.dumps({"model": model, "sentences": sentences}, ensure_ascii=True).encode("ascii"),
+            ) as response:
+                embeddings = []
+                for _ in sentences:
+                    embeddings.append(np.lib.format.read_array(response, allow_pickle=False))
+                return embeddings
 
     class ClientProcess:
         def __init__(self, model=None, threads=None):
