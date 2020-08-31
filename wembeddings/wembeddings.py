@@ -89,7 +89,7 @@ class WEmbeddings:
 
         model = self._models[model]
 
-        start = time.time()
+        time_tokenization = time.time()
 
         subwords, segments, parts = [], [], []
         for i, sentence in enumerate(sentences):
@@ -112,8 +112,7 @@ class WEmbeddings:
         max_sentence_len = max(len(sentence) for sentence in sentences)
         max_subwords = max(len(sentence) for sentence in subwords)
 
-        print("Max sentence len", max_sentence_len, "max subwords", max_subwords, "batch subwords", len(sentences) * max_subwords, "in", time.time() - start, file=sys.stderr)
-
+        time_embeddings = time.time()
         np_subwords = np.zeros([len(subwords), max_subwords], np.int32)
         for i, subword in enumerate(subwords):
             np_subwords[i, :len(subword)] = subword
@@ -122,9 +121,7 @@ class WEmbeddings:
         for i, segment in enumerate(segments):
             np_segments[i, :len(segment)] = segment
 
-        start = time.time()
         embeddings_with_parts = model.compute_embeddings(np_subwords, np_segments).numpy()
-        print("BERT in", time.time() - start, file=sys.stderr)
 
         # Concatenate splitted sentences
         embeddings = []
@@ -134,6 +131,13 @@ class WEmbeddings:
                 [embeddings_with_parts[current_sentence_part + i, :sentence_part] for i, sentence_part in enumerate(sentence_parts)],
                 axis=0))
             current_sentence_part += len(sentence_parts)
+
+        print("WEmbeddings in {:.1f}ms,".format(1000 * (time.time() - time_embeddings)),
+              "tokenization in {:.1f}ms,".format(1000*(time_embeddings - time_tokenization)),
+              "batch {},".format(len(sentences)),
+              "max sentence len {},".format(max_sentence_len),
+              "max subwords {}.".format(max_subwords),
+              file=sys.stderr)
 
         return embeddings
 
