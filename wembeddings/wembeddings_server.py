@@ -13,6 +13,7 @@
 import http.server
 import json
 import socketserver
+import sys
 import threading
 
 import numpy as np
@@ -36,7 +37,8 @@ class WEmbeddingsServer(socketserver.ThreadingTCPServer):
                     sentences_embeddings = request.server._wembeddings_thread_output
             except:
                 import traceback
-                traceback.print_exc()
+                traceback.print_exc(file=sys.stderr)
+                sys.stderr.flush()
                 request.send_response(400)
                 request.send_header("Connection", "close")
                 request.end_headers()
@@ -90,6 +92,7 @@ class WEmbeddingsServer(socketserver.ThreadingTCPServer):
                     self._wembeddings_thread_input["model"], self._wembeddings_thread_input["sentences"])
             except:
                 import traceback
-                traceback.print_exc()
+                traceback.print_exc(file=sys.stderr)
+                sys.stderr.flush()
                 self._wembeddings_thread_output = None
             self._wembeddings_thread_have_output.set()
