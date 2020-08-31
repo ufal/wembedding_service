@@ -24,7 +24,6 @@ class WEmbeddingsServer(socketserver.ThreadingTCPServer):
 
         def do_POST(request):
             request.close_connection = True
-            request.send_header("Connection", "close")
 
             try:
                 length = int(request.headers.get("Content-length", -1))
@@ -36,23 +35,35 @@ class WEmbeddingsServer(socketserver.ThreadingTCPServer):
                     request.server._wembeddings_thread_have_output.clear()
                     sentences_embeddings = request.server._wembeddings_thread_output
             except:
+                import traceback
+                traceback.print_exc()
                 request.send_response(400)
+                request.send_header("Connection", "close")
                 request.end_headers()
-                raise
+                return
 
-            request.send_response(200)
-            request.send_header("Content-type", "application/octet-stream")
-            request.end_headers()
+            if sentences_embeddings is None:
+                request.send_response(400)
+                request.send_header("Connection", "close")
+                request.end_headers()
+            else:
+                request.send_response(200)
+                request.send_header("Connection", "close")
+                request.send_header("Content-type", "application/octet-stream")
+                request.end_headers()
 
-            for sentence_embedding in sentences_embeddings:
-                np.save(request.wfile, sentence_embedding.astype(np.float16), allow_pickle=False)
+                for sentence_embedding in sentences_embeddings:
+                    np.lib.format.write_array(request.wfile, sentence_embedding.astype(request.server._dtype), allow_pickle=False)
 
     allow_reuse_address = True
     daemon_threads = False
 
-    def __init__(self, port, wembeddings_lambda):
+    def __init__(self, port, dtype, wembeddings_lambda):
         super().__init__(("", port), self.WEmbeddingsRequestHandler)
 
+        self._dtype = dtype
+
+        # Create the worker thread and required synchronization
         self._wembeddings_thread_mutex = threading.Lock()
         self._wembeddings_thread_have_input = threading.Event()
         self._wembeddings_thread_have_output = threading.Event()
@@ -74,6 +85,11 @@ class WEmbeddingsServer(socketserver.ThreadingTCPServer):
         while True:
             self._wembeddings_thread_have_input.wait()
             self._wembeddings_thread_have_input.clear()
-            self._wembeddings_thread_output = self._wembeddings.compute_embeddings(
-                self._wembeddings_thread_input["model"], self._wembeddings_thread_input["sentences"])
+            try:
+                self._wembeddings_thread_output = self._wembeddings.compute_embeddings(
+                    self._wembeddings_thread_input["model"], self._wembeddings_thread_input["sentences"])
+            except:
+                import traceback
+                traceback.print_exc()
+                self._wembeddings_thread_output = None
             self._wembeddings_thread_have_output.set()

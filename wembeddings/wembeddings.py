@@ -14,8 +14,6 @@ import sys
 import time
 
 import numpy as np
-import tensorflow as tf
-import transformers
 
 
 class WEmbeddings:
@@ -37,6 +35,9 @@ class WEmbeddings:
             self.compute_embeddings = compute_embeddings
 
     def __init__(self, model=None, max_form_len=64, threads=None):
+        import tensorflow as tf
+        import transformers
+
         # Impose the limit on the number of threads, if given
         if threads is not None:
             tf.config.threading.set_inter_op_parallelism_threads(threads)
@@ -55,6 +56,7 @@ class WEmbeddings:
             )
 
             def compute_embeddings(subwords, segments):
+                subwords, segments = tf.convert_to_tensor(subwords), tf.convert_to_tensor(segments)
                 _, _, subword_embeddings_layers = transformers_model((subwords, tf.cast(tf.not_equal(subwords, 0), tf.int32)))
                 subword_embeddings = tf.math.reduce_mean(subword_embeddings_layers[layer_start:layer_end], axis=0)
 
@@ -120,7 +122,7 @@ class WEmbeddings:
             np_segments[i, :len(segment)] = segment
 
         start = time.time()
-        embeddings_with_parts = model.compute_embeddings(tf.convert_to_tensor(np_subwords), tf.convert_to_tensor(np_segments)).numpy()
+        embeddings_with_parts = model.compute_embeddings(np_subwords, np_segments).numpy()
         print("BERT in", time.time() - start, file=sys.stderr)
 
         # Concatenate splitted sentences
