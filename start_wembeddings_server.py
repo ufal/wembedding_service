@@ -37,8 +37,8 @@ if __name__ == "__main__":
     # Create the server and its own thread
     server = wembeddings_server.WEmbeddingsServer(
         args.port,
-        lambda: wembeddings.WEmbeddings(models_map={args.model: wembeddings.WEmbeddings.MODELS_MAP[args.model]},
-                                        threads=args.threads),
+        args.dtype,
+        lambda: wembeddings.WEmbeddings(model=args.model, threads=args.threads),
     )
     server_thread = threading.Thread(target=server.serve_forever, daemon=True)
     server_thread.start()

@@ -36,7 +36,7 @@ class WEmbeddings:
             self.transformers_model = transformers_model
             self.compute_embeddings = compute_embeddings
 
-    def __init__(self, models_map=MODELS_MAP, max_form_len=64, threads=None):
+    def __init__(self, model=None, max_form_len=64, threads=None):
         # Impose the limit on the number of threads, if given
         if threads is not None:
             tf.config.threading.set_inter_op_parallelism_threads(threads)
@@ -45,7 +45,8 @@ class WEmbeddings:
         self._max_form_len = max_form_len
 
         self._models = {}
-        for model_name, (transformers_model, layer_start, layer_end) in models_map.items():
+        for model_name, (transformers_model, layer_start, layer_end) in (
+                {model: self.MODELS_MAP[model]} if model is not None else self.MODELS_MAP).items():
             tokenizer = transformers.AutoTokenizer.from_pretrained(transformers_model, use_fast=True)
 
             transformers_model = transformers.TFAutoModel.from_pretrained(

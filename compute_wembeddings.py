@@ -12,7 +12,6 @@ import sys
 import zipfile
 
 import numpy as np
-import tensorflow as tf
 
 import wembeddings.wembeddings as wembeddings
 
@@ -32,10 +31,6 @@ if __name__ == "__main__":
 
     args.dtype = getattr(np, args.dtype)
     assert args.format in ["conll", "conllu"]
-
-    # Impose the limit on the number of threads
-    tf.config.threading.set_inter_op_parallelism_threads(args.threads)
-    tf.config.threading.set_intra_op_parallelism_threads(args.threads)
 
     # Load the input file
     sentences = []
@@ -60,7 +55,7 @@ if __name__ == "__main__":
     print("Loaded {} sentences and {} words.".format(len(sentences), sum(map(len, sentences))), file=sys.stderr, flush=True)
 
     # Compute word embeddings
-    wembeddings = wembeddings.WEmbeddings(models_map={args.model: wembeddings.WEmbeddings.MODELS_MAP[args.model]})
+    wembeddings = wembeddings.WEmbeddings(model=args.model, threads=args.threads)
     with zipfile.ZipFile(args.output_npz, mode="w", compression=zipfile.ZIP_STORED) as output_npz:
         for i in range(0, len(sentences), args.batch_size):
             sentences_embeddings = wembeddings.compute_embeddings(args.model, sentences[i:i + args.batch_size])
