@@ -156,6 +156,28 @@ class WEmbeddings:
 
     class ClientProcess:
         def __init__(self, model=None, threads=None):
-            pass
+            import multiprocessing
+
+            self._process_connection, connection = multiprocessing.Pipe()
+            self._process = multiprocessing.Process(target=self._compute_embeddings, args=(connection, model, threads), daemon=True)
+            self._process.start()
+
+        def _compute_embeddings(self, connection, model, threads):
+            wembeddings = WEmbeddings(model=model, threads=threads)
+            while True:
+                model, sentences = connection.recv()
+                try:
+                    embeddings = wembeddings.compute_embeddings(model, sentences)
+                except:
+                    import traceback
+                    traceback.print_exc(file=sys.stderr)
+                    sys.stderr.flush()
+                    embeddings = None
+                connection.send(embeddings)
+
         def compute_embeddings(self, model, sentences):
-            pass
+            self._process_connection.send((model, sentences))
+            embeddings = self._process_connection.recv()
+            if embeddings is None:
+                raise RuntimeError("An error occured during wembeddings computation")
+            return embeddings
