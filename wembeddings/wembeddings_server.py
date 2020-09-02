@@ -61,8 +61,6 @@ class WEmbeddingsServer(socketserver.ThreadingTCPServer):
     daemon_threads = False
 
     def __init__(self, port, dtype, wembeddings_lambda):
-        super().__init__(("", port), self.WEmbeddingsRequestHandler)
-
         self._dtype = dtype
 
         # Create the worker thread and required synchronization
@@ -75,6 +73,9 @@ class WEmbeddingsServer(socketserver.ThreadingTCPServer):
         # Wait for the worker thread to start
         self._wembeddings_thread_have_output.wait()
         self._wembeddings_thread_have_output.clear()
+
+        # Initialize the server
+        super().__init__(("", port), self.WEmbeddingsRequestHandler)
 
     def _wembeddings_thread_code(self, wembeddings_lambda):
         # Create the WEmbeddings object
