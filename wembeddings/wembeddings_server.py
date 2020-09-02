@@ -23,11 +23,32 @@ class WEmbeddingsServer(socketserver.ThreadingTCPServer):
     class WEmbeddingsRequestHandler(http.server.BaseHTTPRequestHandler):
         protocol_version = "HTTP/1.1"
 
-        def do_POST(request):
+        def respond_error(request, message):
             request.close_connection = True
+            request.send_response(400)
+            request.send_header("Connection", "close")
+            request.send_header("Content-Type", "text/plain")
+            request.end_headers()
+            request.wfile.write(message.encode("utf-8"))
+
+        def respond_ok(request, content_type):
+            request.close_connection = True
+            request.send_response(200)
+            request.send_header("Connection", "close")
+            request.send_header("Content-Type", content_type)
+            request.end_headers()
+
+        def do_POST(request):
+            if request.headers.get("Transfer-Encoding", "identity").lower() != "identity":
+                request.respond_error("Only 'identity' Transfer-Encoding of payload is supported for now.")
+                return
+
+            if "Content-Length" not in request.headers:
+                request.respond_error("The Content-Length of payload is required.")
+                return
 
             try:
-                length = int(request.headers.get("Content-length", -1))
+                length = int(request.headers["Content-Length"])
                 data = json.loads(request.rfile.read(length))
                 with request.server._wembeddings_thread_mutex:
                     request.server._wembeddings_thread_input = data
@@ -39,21 +60,13 @@ class WEmbeddingsServer(socketserver.ThreadingTCPServer):
                 import traceback
                 traceback.print_exc(file=sys.stderr)
                 sys.stderr.flush()
-                request.send_response(400)
-                request.send_header("Connection", "close")
-                request.end_headers()
+                request.respond_error("Malformed request.")
                 return
 
             if sentences_embeddings is None:
-                request.send_response(400)
-                request.send_header("Connection", "close")
-                request.end_headers()
+                request.respond_error("An error occurred during wembeddings computation.")
             else:
-                request.send_response(200)
-                request.send_header("Connection", "close")
-                request.send_header("Content-type", "application/octet-stream")
-                request.end_headers()
-
+                request.respond_ok("application/octet_stream")
                 for sentence_embedding in sentences_embeddings:
                     np.lib.format.write_array(request.wfile, sentence_embedding.astype(request.server._dtype), allow_pickle=False)
 
