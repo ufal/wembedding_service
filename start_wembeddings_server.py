@@ -56,6 +56,7 @@ if __name__ == "__main__":
     print("To stop it gracefully, either send SIGINT (Ctrl+C) or SIGUSR1.", file=sys.stderr, flush=True)
 
     # Wait until the server should be closed
+    signal.pthread_sigmask(signal.SIG_BLOCK, [signal.SIGINT, signal.SIGUSR1])
     signal.sigwait([signal.SIGINT, signal.SIGUSR1])
     print("Initiating shutdown of the WEmbeddings server.", file=sys.stderr, flush=True)
     server.shutdown()
