@@ -40,12 +40,10 @@ class WEmbeddingsServer(socketserver.ThreadingTCPServer):
 
         def do_POST(request):
             if request.headers.get("Transfer-Encoding", "identity").lower() != "identity":
-                request.respond_error("Only 'identity' Transfer-Encoding of payload is supported for now.")
-                return
+                return request.respond_error("Only 'identity' Transfer-Encoding of payload is supported for now.")
 
             if "Content-Length" not in request.headers:
-                request.respond_error("The Content-Length of payload is required.")
-                return
+                return request.respond_error("The Content-Length of payload is required.")
 
             try:
                 length = int(request.headers["Content-Length"])
@@ -55,8 +53,7 @@ class WEmbeddingsServer(socketserver.ThreadingTCPServer):
                 import traceback
                 traceback.print_exc(file=sys.stderr)
                 sys.stderr.flush()
-                request.respond_error("Malformed request.")
-                return
+                return request.respond_error("Malformed request.")
 
             try:
                 with request.server._wembeddings_mutex:
