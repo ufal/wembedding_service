@@ -70,7 +70,6 @@ class WEmbeddingsServer(socketserver.ThreadingTCPServer):
                 for sentence_embedding in sentences_embeddings:
                     np.lib.format.write_array(request.wfile, sentence_embedding.astype(request.server._dtype), allow_pickle=False)
 
-    allow_reuse_address = True
     daemon_threads = False
 
     def __init__(self, port, dtype, wembeddings_lambda):
@@ -110,3 +109,9 @@ class WEmbeddingsServer(socketserver.ThreadingTCPServer):
                 sys.stderr.flush()
                 self._wembeddings_thread_output = None
             self._wembeddings_thread_have_output.set()
+
+    def server_bind(self):
+        import socket
+        self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
+        super().server_bind()
