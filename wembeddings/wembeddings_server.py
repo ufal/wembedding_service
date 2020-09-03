@@ -50,12 +50,7 @@ class WEmbeddingsServer(socketserver.ThreadingTCPServer):
             try:
                 length = int(request.headers["Content-Length"])
                 data = json.loads(request.rfile.read(length))
-                with request.server._wembeddings_thread_mutex:
-                    request.server._wembeddings_thread_input = data
-                    request.server._wembeddings_thread_have_input.set()
-                    request.server._wembeddings_thread_have_output.wait()
-                    request.server._wembeddings_thread_have_output.clear()
-                    sentences_embeddings = request.server._wembeddings_thread_output
+                model, sentences = data["model"], data["sentences"]
             except:
                 import traceback
                 traceback.print_exc(file=sys.stderr)
@@ -63,52 +58,30 @@ class WEmbeddingsServer(socketserver.ThreadingTCPServer):
                 request.respond_error("Malformed request.")
                 return
 
-            if sentences_embeddings is None:
-                request.respond_error("An error occurred during wembeddings computation.")
-            else:
-                request.respond_ok("application/octet_stream")
-                for sentence_embedding in sentences_embeddings:
-                    np.lib.format.write_array(request.wfile, sentence_embedding.astype(request.server._dtype), allow_pickle=False)
+            try:
+                with request.server._wembeddings_mutex:
+                    sentences_embeddings = request.server._wembeddings.compute_embeddings(model, sentences)
+            except:
+                import traceback
+                traceback.print_exc(file=sys.stderr)
+                sys.stderr.flush()
+                return request.respond_error("An error occurred during wembeddings computation.")
+
+            request.respond_ok("application/octet_stream")
+            for sentence_embedding in sentences_embeddings:
+                np.lib.format.write_array(request.wfile, sentence_embedding.astype(request.server._dtype), allow_pickle=False)
 
     daemon_threads = False
 
     def __init__(self, port, dtype, wembeddings_lambda):
         self._dtype = dtype
 
-        # Create the worker thread and required synchronization
-        self._wembeddings_thread_mutex = threading.Lock()
-        self._wembeddings_thread_have_input = threading.Event()
-        self._wembeddings_thread_have_output = threading.Event()
-        self._wembeddings_thread = threading.Thread(target=self._wembeddings_thread_code, args=(wembeddings_lambda,), daemon=True)
-        self._wembeddings_thread.start()
-
-        # Wait for the worker thread to start
-        self._wembeddings_thread_have_output.wait()
-        self._wembeddings_thread_have_output.clear()
+        # Create the WEmbeddings object its mutex
+        self._wembeddings = wembeddings_lambda()
+        self._wembeddings_mutex = threading.Lock()
 
         # Initialize the server
         super().__init__(("", port), self.WEmbeddingsRequestHandler)
-
-    def _wembeddings_thread_code(self, wembeddings_lambda):
-        # Create the WEmbeddings object
-        self._wembeddings = wembeddings_lambda()
-
-        # Notify that the thread is ready
-        self._wembeddings_thread_have_output.set()
-
-        # Start the real work
-        while True:
-            self._wembeddings_thread_have_input.wait()
-            self._wembeddings_thread_have_input.clear()
-            try:
-                self._wembeddings_thread_output = self._wembeddings.compute_embeddings(
-                    self._wembeddings_thread_input["model"], self._wembeddings_thread_input["sentences"])
-            except:
-                import traceback
-                traceback.print_exc(file=sys.stderr)
-                sys.stderr.flush()
-                self._wembeddings_thread_output = None
-            self._wembeddings_thread_have_output.set()
 
     def server_bind(self):
         import socket
