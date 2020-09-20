@@ -59,7 +59,7 @@ if __name__ == "__main__":
     if args.server is not None:
         wembeddings = wembeddings.WEmbeddings.ClientNetwork(args.server)
     else:
-        wembeddings = wembeddings.WEmbeddings(model=args.model, threads=args.threads)
+        wembeddings = wembeddings.WEmbeddings(threads=args.threads)
 
     # Compute word embeddings
     with zipfile.ZipFile(args.output_npz, mode="w", compression=zipfile.ZIP_STORED) as output_npz:

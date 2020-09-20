@@ -34,7 +34,7 @@ if __name__ == "__main__":
     parser.add_argument("port", type=int, help="Port to use")
     parser.add_argument("--dtype", default="float16", type=str, help="Dtype to serve the embeddings as")
     parser.add_argument("--logfile", default=None, type=str, help="Log path")
-    parser.add_argument("--model", default="bert-base-multilingual-uncased-last4", type=str, help="Model name (see wembeddings.py for options)")
+    parser.add_argument("--preload_models", default=False, action="store_true", help="Preload WEmbeddings models")
     parser.add_argument("--threads", default=4, type=int, help="Threads to use")
     args = parser.parse_args()
     args.dtype = getattr(np, args.dtype)
@@ -47,7 +47,7 @@ if __name__ == "__main__":
     server = wembeddings_server.WEmbeddingsServer(
         args.port,
         args.dtype,
-        lambda: wembeddings.WEmbeddings(model=args.model, threads=args.threads),
+        lambda: wembeddings.WEmbeddings(threads=args.threads, preload_models=args.preload_models),
     )
     server_thread = threading.Thread(target=server.serve_forever, daemon=True)
     server_thread.start()

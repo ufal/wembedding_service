@@ -30,14 +30,49 @@ class WEmbeddings:
     MAX_SUBWORDS_PER_SENTENCE = 510
 
     class _Model:
-        """Keeps constructed tokenizer and transformers model graph."""
-        def __init__(self, tokenizer, transformers_model, compute_embeddings):
-            self.tokenizer = tokenizer
-            self.transformers_model = transformers_model
-            self.compute_embeddings = compute_embeddings
+        """Construct a tokenizer and transformers model graph."""
+        def __init__(self, transformers_model, layer_start, layer_end, loader_lock):
+            self._model_loaded = False
+            self._transformers_model_name = transformers_model
+            self._layer_start = layer_start
+            self._layer_end = layer_end
+            self._loader_lock = loader_lock
 
-    def __init__(self, model=None, max_form_len=64, threads=None):
+        def load(self):
+            if self._model_loaded: return
+            with self._loader_lock:
+                import tensorflow as tf
+                import transformers
+
+                if self._model_loaded: return
+
+                self.tokenizer = transformers.AutoTokenizer.from_pretrained(self._transformers_model_name, use_fast=True)
+
+                self._transformers_model = transformers.TFAutoModel.from_pretrained(
+                    self._transformers_model_name,
+                    config=transformers.AutoConfig.from_pretrained(self._transformers_model_name, output_hidden_states=True),
+                )
+
+                def compute_embeddings(subwords, segments):
+                    _, _, subword_embeddings_layers = self._transformers_model((subwords, tf.cast(tf.not_equal(subwords, 0), tf.int32)))
+                    subword_embeddings = tf.math.reduce_mean(subword_embeddings_layers[self._layer_start:self._layer_end], axis=0)
+
+                    # Average subwords (word pieces) word embeddings for each token
+                    def average_subwords(embeddings_and_segments):
+                        subword_embeddings, segments = embeddings_and_segments
+                        return tf.math.segment_mean(subword_embeddings, segments)
+                    word_embeddings = tf.map_fn(average_subwords, (subword_embeddings[:, 1:], segments), dtype=tf.float32)[:, :-1]
+                    return word_embeddings
+                self.compute_embeddings = tf.function(compute_embeddings).get_concrete_function(
+                    tf.TensorSpec(shape=[None, None], dtype=tf.int32), tf.TensorSpec(shape=[None, None], dtype=tf.int32)
+                )
+
+                self._model_loaded = True
+
+
+    def __init__(self, max_form_len=64, threads=None, preload_models=False):
         import tensorflow as tf
+        import threading
         import transformers
 
         # Impose the limit on the number of threads, if given
@@ -47,33 +82,13 @@ class WEmbeddings:
 
         self._max_form_len = max_form_len
 
+        loader_lock = threading.Lock()
         self._models = {}
-        for model_name, (transformers_model, layer_start, layer_end) in (
-                {model: self.MODELS_MAP[model]} if model is not None else self.MODELS_MAP).items():
-            tokenizer = transformers.AutoTokenizer.from_pretrained(transformers_model, use_fast=True)
+        for model_name, (transformers_model, layer_start, layer_end) in self.MODELS_MAP.items():
+            self._models[model_name] = self._Model(transformers_model, layer_start, layer_end, loader_lock)
 
-            transformers_model = transformers.TFAutoModel.from_pretrained(
-                transformers_model,
-                config=transformers.AutoConfig.from_pretrained(transformers_model, output_hidden_states=True),
-            )
-
-            def compute_embeddings(subwords, segments):
-                _, _, subword_embeddings_layers = transformers_model((subwords, tf.cast(tf.not_equal(subwords, 0), tf.int32)))
-                subword_embeddings = tf.math.reduce_mean(subword_embeddings_layers[layer_start:layer_end], axis=0)
-
-                # Average subwords (word pieces) word embeddings for each token
-                def average_subwords(embeddings_and_segments):
-                    subword_embeddings, segments = embeddings_and_segments
-                    return tf.math.segment_mean(subword_embeddings, segments)
-                word_embeddings = tf.map_fn(average_subwords, (subword_embeddings[:, 1:], segments), dtype=tf.float32)[:, :-1]
-                return word_embeddings
-
-            compute_embeddings = tf.function(compute_embeddings).get_concrete_function(
-                tf.TensorSpec(shape=[None, None], dtype=tf.int32), tf.TensorSpec(shape=[None, None], dtype=tf.int32)
-            )
-
-            self._models[model_name] = self._Model(tokenizer, transformers_model, compute_embeddings)
-
+            if preload_models:
+                self._models[model_name].load()
 
     def compute_embeddings(self, model, sentences):
         """Computes word embeddings.
@@ -88,6 +103,7 @@ class WEmbeddings:
             print("No such WEmbeddings model {}".format(model), file=sys.stderr, flush=True)
 
         model = self._models[model]
+        model.load()
 
         time_tokenization = time.time()
 
