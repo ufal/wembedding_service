@@ -141,6 +141,7 @@ class WEmbeddings:
 
         return embeddings
 
+
     class ClientNetwork:
         def __init__(self, url):
             self._url = url
