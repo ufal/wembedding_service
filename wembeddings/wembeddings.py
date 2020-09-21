@@ -70,7 +70,7 @@ class WEmbeddings:
                 self._model_loaded = True
 
 
-    def __init__(self, max_form_len=64, threads=None, preload_models=False):
+    def __init__(self, max_form_len=64, threads=None, preload_models=[]):
         import tensorflow as tf
         import threading
         import transformers
@@ -87,7 +87,7 @@ class WEmbeddings:
         for model_name, (transformers_model, layer_start, layer_end) in self.MODELS_MAP.items():
             self._models[model_name] = self._Model(transformers_model, layer_start, layer_end, loader_lock)
 
-            if preload_models:
+            if model_name in preload_models or "all" in preload_models:
                 self._models[model_name].load()
 
     def compute_embeddings(self, model, sentences):
