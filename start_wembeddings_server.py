@@ -34,7 +34,7 @@ if __name__ == "__main__":
     parser.add_argument("port", type=int, help="Port to use")
     parser.add_argument("--dtype", default="float16", type=str, help="Dtype to serve the embeddings as")
     parser.add_argument("--logfile", default=None, type=str, help="Log path")
-    parser.add_argument("--preload_models", default=[], nargs="?", type=str, help="Models to preload, or `all`")
+    parser.add_argument("--preload_models", default=[], nargs="*", type=str, help="Models to preload, or `all`")
     parser.add_argument("--threads", default=4, type=int, help="Threads to use")
     args = parser.parse_args()
     args.dtype = getattr(np, args.dtype)
