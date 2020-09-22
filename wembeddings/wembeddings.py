@@ -153,7 +153,7 @@ class WEmbeddings:
               "batch {},".format(len(sentences)),
               "max sentence len {},".format(max_sentence_len),
               "max subwords {}.".format(max_subwords),
-              file=sys.stderr)
+              file=sys.stderr, flush=True)
 
         return embeddings
 
