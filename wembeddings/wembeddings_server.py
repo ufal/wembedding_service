@@ -85,3 +85,8 @@ class WEmbeddingsServer(socketserver.ThreadingTCPServer):
         self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
         super().server_bind()
+
+    def service_actions(self):
+        if isinstance(getattr(self, "_threads", None), list):
+            if len(self._threads) >= 1024:
+                self._threads = [thread for thread in self._threads if thread.is_alive()]
