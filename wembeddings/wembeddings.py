@@ -163,7 +163,7 @@ class WEmbeddings:
             self._url = url
         def compute_embeddings(self, model, sentences):
             with urllib.request.urlopen(
-                    "http://{}".format(self._url),
+                    "http://{}/wembeddings".format(self._url),
                     data=json.dumps({"model": model, "sentences": sentences}, ensure_ascii=True).encode("ascii"),
             ) as response:
                 embeddings = []

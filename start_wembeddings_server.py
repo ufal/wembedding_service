@@ -14,7 +14,7 @@ Example setup:
 $ venv/bin/python ./wembeddings_server.py
 
 Example call:
-$ curl --data-binary @examples/request.json localhost:8000/ | xxd
+$ curl --data-binary @examples/request.json localhost:8000/wembeddings | xxd
 """
 
 import signal
