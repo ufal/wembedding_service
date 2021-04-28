@@ -52,6 +52,8 @@ Build the Docker image:
 docker build -t wembeddings
 ```
 
+Run the container:
+
 ```sh
 docker run --name wembeddings --rm wembeddings 8000
 ```
