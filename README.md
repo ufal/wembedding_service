@@ -43,3 +43,33 @@ Run the service:
 ```sh
 venv/bin/python3 ./start_wembembeddings_server.py 8000
 ```
+
+## Docker
+
+Build the Docker image:
+
+```sh
+docker build -t wembeddings
+```
+
+```sh
+docker run --name wembeddings --rm wembeddings 8000
+```
+
+If you wish to run the service in the backround, you can add the `-d` option:
+
+```sh
+docker run --name wembeddings --rm wembeddings -d --rm wembeddings 8000
+```
+
+If you have another Docker container to query the WEmbeddings service, you can
+connect both the service and the client to a user-defined network:
+
+```sh
+docker network create wembeddings-network
+docker run --network wembeddings-network --name wembeddings -d --rm wembeddings 8000
+docker run --network wembeddings-network --name my_client --rm my_client
+```
+
+The client `my_client` can access the wembeddings service by its assigned Docker
+name `wembeddings:8000`.
