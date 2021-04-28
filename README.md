@@ -17,3 +17,29 @@ This Source Code Form is subject to the terms of the Mozilla Public License, v. 
 
 Author: Milan Straka
 Contact: straka@ufal.mff.cuni.cz
+
+## Installation
+
+Clone the repository:
+
+```sh
+git clone https://github.com/ufal/wembedding_service
+```
+
+Create a Python virtual environment:
+
+```sh
+python -m venv venv
+```
+
+Install requirements:
+
+```sh
+venv/bin/pip3 install -r requirements.txt
+```
+
+Run the service:
+
+```sh
+venv/bin/python3 ./start_wembembeddings_server.py 8000
+```
