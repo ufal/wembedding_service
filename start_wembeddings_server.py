@@ -44,16 +44,16 @@ if __name__ == "__main__":
     if args.logfile is not None:
         sys.stderr = open(args.logfile, "a", encoding="utf-8")
 
-    # Embeddings type
-    embed_type = lambda: wembeddings.WEmbeddings(threads=args.threads, preload_models=args.preload_models)
+    # Lambda to create the WEmbeddings instance
+    wembeddings_lambda = lambda: wembeddings.WEmbeddings(threads=args.threads, preload_models=args.preload_models)
 
     if args.preload_only:
         print("Preloading models only.", file=sys.stderr)
-        embed_type()
+        wembeddings_lambda()
         sys.exit(0)
 
     # Create the server and its own thread
-    server = wembeddings_server.WEmbeddingsServer(args.port, args.dtype, embed_type)
+    server = wembeddings_server.WEmbeddingsServer(args.port, args.dtype, wembeddings_lambda)
     server_thread = threading.Thread(target=server.serve_forever, daemon=True)
     server_thread.start()
 
