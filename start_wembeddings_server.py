@@ -18,6 +18,7 @@ $ curl --data-binary @examples/request.json localhost:8000/wembeddings | xxd
 """
 
 import signal
+import os
 import sys
 import threading
 
@@ -60,11 +61,26 @@ if __name__ == "__main__":
     print("Starting WEmbeddings server on port {}.".format(args.port), file=sys.stderr)
     print("To stop it gracefully, either send SIGINT (Ctrl+C) or SIGUSR1.", file=sys.stderr, flush=True)
 
+    def _shutdown():
+        print("Initiating shutdown of the WEmbeddings server.", file=sys.stderr, flush=True)
+        server.shutdown()
+        print("Stopped handling new requests, processing all current ones.", file=sys.stderr, flush=True)
+        server.server_close()
+        print("Finished shutdown of the WEmbeddings server.", file=sys.stderr, flush=True)
+
+
     # Wait until the server should be closed
-    signal.pthread_sigmask(signal.SIG_BLOCK, [signal.SIGINT, signal.SIGUSR1])
-    signal.sigwait([signal.SIGINT, signal.SIGUSR1])
-    print("Initiating shutdown of the WEmbeddings server.", file=sys.stderr, flush=True)
-    server.shutdown()
-    print("Stopped handling new requests, processing all current ones.", file=sys.stderr, flush=True)
-    server.server_close()
-    print("Finished shutdown of the WEmbeddings server.", file=sys.stderr, flush=True)
+    if os.name != 'nt':
+        signal.pthread_sigmask(signal.SIG_BLOCK, [signal.SIGINT, signal.SIGUSR1])
+        signal.sigwait([signal.SIGINT, signal.SIGUSR1])
+    else:
+        # for testing only
+        import time
+        def signal_handler(sig, frame):
+            _shutdown()
+            sys.exit(0)
+        signal.signal(signal.SIGINT, signal_handler)
+        while True:
+            time.sleep(1)
+
+    _shutdown()

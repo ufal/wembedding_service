@@ -13,6 +13,7 @@
 import http.server
 import json
 import socketserver
+import os
 import sys
 import threading
 import urllib.parse
@@ -93,7 +94,8 @@ class WEmbeddingsServer(socketserver.ThreadingTCPServer):
     def server_bind(self):
         import socket
         self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
+        if os.name != 'nt':
+            self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
         super().server_bind()
 
     def service_actions(self):
