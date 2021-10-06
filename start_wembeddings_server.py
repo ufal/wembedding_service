@@ -21,6 +21,7 @@ import signal
 import os
 import sys
 import threading
+import time
 
 import numpy as np
 
@@ -61,26 +62,24 @@ if __name__ == "__main__":
     print("Starting WEmbeddings server on port {}.".format(args.port), file=sys.stderr)
     print("To stop it gracefully, either send SIGINT (Ctrl+C) or SIGUSR1.", file=sys.stderr, flush=True)
 
-    def _shutdown():
+    def shutdown():
         print("Initiating shutdown of the WEmbeddings server.", file=sys.stderr, flush=True)
         server.shutdown()
         print("Stopped handling new requests, processing all current ones.", file=sys.stderr, flush=True)
         server.server_close()
         print("Finished shutdown of the WEmbeddings server.", file=sys.stderr, flush=True)
 
-
-    # Wait until the server should be closed
+    # Serve
     if os.name != 'nt':
+        # Wait for one of the signals on Posix systems.
         signal.pthread_sigmask(signal.SIG_BLOCK, [signal.SIGINT, signal.SIGUSR1])
         signal.sigwait([signal.SIGINT, signal.SIGUSR1])
+        shutdown()
     else:
-        # for testing only
-        import time
+        # On Windows, allow interruption with Ctrl+C -- for testing only.
         def signal_handler(sig, frame):
-            _shutdown()
+            shutdown()
             sys.exit(0)
         signal.signal(signal.SIGINT, signal_handler)
         while True:
             time.sleep(1)
-
-    _shutdown()
