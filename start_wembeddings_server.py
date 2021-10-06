@@ -35,6 +35,7 @@ if __name__ == "__main__":
     parser.add_argument("--dtype", default="float16", type=str, help="Dtype to serve the embeddings as")
     parser.add_argument("--logfile", default=None, type=str, help="Log path")
     parser.add_argument("--preload_models", default=[], nargs="*", type=str, help="Models to preload, or `all`")
+    parser.add_argument("--preload_only", default=False, action="store_true",  help="Only preload models and exit")
     parser.add_argument("--threads", default=4, type=int, help="Threads to use")
     args = parser.parse_args()
     args.dtype = getattr(np, args.dtype)
@@ -43,12 +44,16 @@ if __name__ == "__main__":
     if args.logfile is not None:
         sys.stderr = open(args.logfile, "a", encoding="utf-8")
 
+    # Embeddings type
+    embed_type = lambda: wembeddings.WEmbeddings(threads=args.threads, preload_models=args.preload_models)
+
+    if args.preload_only:
+        print("Preloading models only.", file=sys.stderr)
+        embed_type()
+        sys.exit(0)
+
     # Create the server and its own thread
-    server = wembeddings_server.WEmbeddingsServer(
-        args.port,
-        args.dtype,
-        lambda: wembeddings.WEmbeddings(threads=args.threads, preload_models=args.preload_models),
-    )
+    server = wembeddings_server.WEmbeddingsServer(args.port, args.dtype, embed_type)
     server_thread = threading.Thread(target=server.serve_forever, daemon=True)
     server_thread.start()
 
