@@ -24,6 +24,7 @@ class WEmbeddings:
     MODELS_MAP = {
         # Key: model name. Value: transformer model name, layer start, layer end.
         "bert-base-multilingual-uncased-last4": ("bert-base-multilingual-uncased", -4, None),
+        "robeczech-base-last4": ("ufal/robeczech-base", -4, None),
         "xlm-roberta-base-last4": ("jplu/tf-xlm-roberta-base", -4, None),
     }
 
@@ -115,7 +116,7 @@ class WEmbeddings:
                 subwords.append([])
                 parts.append([0])
                 for word in sentence:
-                    word_subwords = model.tokenizer.encode(word[:self._max_form_len], add_special_tokens=False)
+                    word_subwords = model.tokenizer.encode(" " if subwords[-1] else "") + word[:self._max_form_len], add_special_tokens=False)
                     # Split sentences with too many subwords
                     if len(subwords[-1]) + len(word_subwords) > self.MAX_SUBWORDS_PER_SENTENCE:
                         subwords[-1] = model.tokenizer.build_inputs_with_special_tokens(subwords[-1])
