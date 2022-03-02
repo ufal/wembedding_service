@@ -74,7 +74,6 @@ class WEmbeddings:
     def __init__(self, max_form_len=64, threads=None, preload_models=[]):
         import tensorflow as tf
         import threading
-        import transformers
 
         # Impose the limit on the number of threads, if given
         if threads is not None:
