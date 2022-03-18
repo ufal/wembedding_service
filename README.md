@@ -41,7 +41,7 @@ venv/bin/pip3 install -r requirements.txt
 Run the service:
 
 ```sh
-venv/bin/python3 ./start_wembembeddings_server.py 8000
+venv/bin/python3 ./start_wembeddings_server.py 8000
 ```
 
 ## Docker
@@ -58,7 +58,7 @@ Run the container:
 docker run --name wembeddings --rm wembeddings 8000
 ```
 
-If you wish to run the service in the backround, you can add the `-d` option:
+If you wish to run the service in the background, you can add the `-d` option:
 
 ```sh
 docker run --name wembeddings --rm wembeddings -d --rm wembeddings 8000

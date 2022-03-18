@@ -7,7 +7,6 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-import re
 import sys
 import zipfile
 
@@ -47,10 +46,9 @@ if __name__ == "__main__":
                 columns = line.split("\t")
                 if args.format == "conll":
                     sentences[-1].append(columns[0])
-                elif args.format == "conllu":
-                    if columns[0].isdigit():
-                        assert len(columns) == 10
-                        sentences[-1].append(columns[1])
+                elif args.format == "conllu" and columns[0].isdigit():
+                    assert len(columns) == 10
+                    sentences[-1].append(columns[1])
             else:
                 in_sentence = False
     print("Loaded {} sentences and {} words.".format(len(sentences), sum(map(len, sentences))), file=sys.stderr, flush=True)
