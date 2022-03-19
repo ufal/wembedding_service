@@ -55,7 +55,9 @@ class WEmbeddings:
                 )
 
                 def compute_embeddings(subwords, segments):
-                    subword_embeddings_layers = self._transformers_model((subwords, tf.cast(tf.not_equal(subwords, -1), tf.int32))).hidden_states
+                    subword_embeddings_layers = self._transformers_model(
+                        (tf.maximum(subwords, 0), tf.cast(tf.not_equal(subwords, -1), tf.int32))
+                    ).hidden_states
                     subword_embeddings = tf.math.reduce_mean(subword_embeddings_layers[self._layer_start:self._layer_end], axis=0)
 
                     # Average subwords (word pieces) word embeddings for each token
