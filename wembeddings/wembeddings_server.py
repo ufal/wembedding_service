@@ -79,6 +79,20 @@ class WEmbeddingsServer(socketserver.ThreadingTCPServer):
             else:
                 request.respond_error("No handler for the given URL '{}'".format(url.path), code=404)
 
+        def do_GET(request):
+            try:
+                request.path = request.path.encode("iso-8859-1").decode("utf-8")
+                url = urllib.parse.urlparse(request.path)
+            except:
+                return request.respond_error("Cannot parse request URL.")
+
+            if url.path == "/status":
+                request.respond("application/json")
+                request.wfile.write(bytes("""{"status": "UP"}""", "utf-8"))
+            # URL not found
+            else:
+                request.respond_error("No handler for the given URL '{}'".format(url.path), code=404)
+
     daemon_threads = False
 
     def __init__(self, port, dtype, wembeddings_lambda):
