@@ -25,7 +25,7 @@ class WEmbeddings:
         # Key: model name. Value: transformer model name, layer start, layer end.
         "bert-base-multilingual-uncased-last4": ("bert-base-multilingual-uncased", -4, None),
         "robeczech-base-last4": ("ufal/robeczech-base", -4, None),
-        "xlm-roberta-base-last4": ("jplu/tf-xlm-roberta-base", -4, None),
+        "xlm-roberta-base-last4": ("xlm-roberta-base", -4, None),
     }
 
     MAX_SUBWORDS_PER_SENTENCE = 510
