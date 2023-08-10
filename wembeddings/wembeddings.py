@@ -111,13 +111,18 @@ class WEmbeddings:
 
             time_tokenization = time.time()
 
+            sentences_subwords = model.tokenizer(
+                [(" " if i else "") + word[:self._max_form_len] for sentence in sentences for i, word in enumerate(sentence)],
+                add_special_tokens=False
+            ).input_ids
+
             subwords, segments, parts = [], [], []
-            for i, sentence in enumerate(sentences):
+            for sentence in sentences:
                 segments.append([])
                 subwords.append([])
                 parts.append([0])
-                for word in sentence:
-                    word_subwords = model.tokenizer.encode((" " if subwords[-1] else "") + word[:self._max_form_len], add_special_tokens=False)
+                sentence_subwords, sentences_subwords = sentences_subwords[:len(sentence)], sentences_subwords[len(sentence):]
+                for word_subwords in sentence_subwords:
                     # Split sentences with too many subwords
                     if len(subwords[-1]) + len(word_subwords) > self.MAX_SUBWORDS_PER_SENTENCE:
                         subwords[-1] = model.tokenizer.build_inputs_with_special_tokens(subwords[-1])
